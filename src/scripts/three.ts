@@ -1,14 +1,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 
 let canvasContainer: HTMLDivElement | null;
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 let model: THREE.Group<THREE.Object3DEventMap>;
-let clock: THREE.Clock;
+let sphereMesh: THREE.Mesh;
 let mouseX = 0;
 let mouseY = 0;
+let time: THREE.Clock;
+let composer: EffectComposer;
 
 function init() {
   scene = new THREE.Scene();
@@ -24,17 +29,42 @@ function init() {
 
   canvasContainer.appendChild(renderer.domElement);
 
-  addBackgroundTexture();
+  // Hidden, for debug purposes
+  // addBackgroundImageTexture();
+  addSphere();
 
   renderer.setClearColor(0x101010);
   renderer.setAnimationLoop(animate);
 
-  clock = new THREE.Clock();
+  time = new THREE.Clock(true);
+
+  const renderScene = new RenderPass(scene, camera);
+
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight), 1.5, 0.4, .85);
+  bloomPass.threshold = 0;
+  bloomPass.strength = 1.5;
+  bloomPass.radius = 0;
+
+  composer = new EffectComposer( renderer );
+  composer.addPass( renderScene );
+  composer.addPass( bloomPass );
 
   loadGLTFModel();
 }
 
-function addBackgroundTexture() {
+function addSphere() {
+  const sphere = new THREE.SphereGeometry(1);
+  const sphereMaterial = new THREE.MeshStandardMaterial({
+    emissive: new THREE.Color(0xbd0249),
+  });
+
+  sphereMesh = new THREE.Mesh(sphere, sphereMaterial);
+
+  sphereMesh.position.set(0, 0, -1);
+  scene.add(sphereMesh);
+}
+
+function addBackgroundImageTexture() {
   new THREE.TextureLoader().loadAsync("/studiocms-login-test/evening-sky.png").then((texture) => {
     const bgGeo = new THREE.PlaneGeometry(15, 15);
     const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
@@ -76,19 +106,19 @@ function loadGLTFModel() {
           roughness: .45,
           transmission: .9,
           thickness: .8,
+          clearcoat: .5,
+          clearcoatRoughness: .5
           // NOTE: A fresnel shader might be needed to emphasize the corners some more.
         });
         child.material = material;
       }
     });
 
-    const light = new THREE.DirectionalLight(0xFFFFFF);
-    light.position.set(0, 2, 5);
-    light.target.position.set(0, 0, 0);
+    // Light 2, the sequel to light, now available (SQLite??????)
+    const light2 = new THREE.AmbientLight( 0x606060 ); // soft white light
+    scene.add( light2 );
 
     scene.add(model);
-    scene.add(light);
-    scene.add(light.target);
 
     fitModelToViewport(model);
   }, undefined, (err) => {
@@ -97,20 +127,24 @@ function loadGLTFModel() {
 }
 
 function animate() {
-  if (model) {
-    mouseX = mouseX > (window.innerWidth / 2) ? window.innerWidth / 2 : mouseX
+  if (model && canvasContainer) {
     const rotationX = (0.1 * ((mouseY / window.innerHeight) * Math.PI - Math.PI / 2)) + Math.PI / 2;
-    const rotationY = 0.1 * ((mouseX / (window.innerWidth / 2)) * Math.PI - Math.PI / 2);
+    const rotationY = 0.1 * ((mouseX / (canvasContainer.clientWidth)) * Math.PI - Math.PI / 2);
 
     model.rotation.z = -rotationY;
     model.rotation.x = rotationX;
   }
 
-  renderer.render(scene, camera);
+  if (sphereMesh) {
+    console.log("Why")
+    sphereMesh.position.set(Math.cos(time.getElapsedTime()), sphereMesh.position.y, sphereMesh.position.z)
+  }
+
+  composer.render();
 }
 
 // Mouse move event listener to capture and update mouse coordinates
-document.addEventListener('mousemove', (ev) => {
+document.getElementById('canvas-container')!.addEventListener('mousemove', (ev) => {
   mouseX = ev.clientX;
   mouseY = ev.clientY;
 });
