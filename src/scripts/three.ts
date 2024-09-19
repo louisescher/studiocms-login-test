@@ -22,11 +22,25 @@ function init() {
 
   canvasContainer.appendChild(renderer.domElement);
 
+  addBackgroundTexture();
+
+  renderer.setClearColor(0x101010);
   renderer.setAnimationLoop(animate);
 
   clock = new THREE.Clock();
 
   loadGLTFModel();
+}
+
+function addBackgroundTexture() {
+  new THREE.TextureLoader().loadAsync("/studiocms-login-test/evening-sky.png").then((texture) => {
+    const bgGeo = new THREE.PlaneGeometry(15, 15);
+    const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
+    const bgMesh = new THREE.Mesh(bgGeo, bgMaterial);
+
+    bgMesh.position.set(0, 0, -1);
+    scene.add(bgMesh);
+  })
 }
 
 /**
@@ -52,9 +66,6 @@ function fitModelToViewport(model: THREE.Group<THREE.Object3DEventMap>) {
   cameraZ *= 2.5; // Factor to add space around the model (optional)
   camera.position.z = cameraZ;
 
-  // Update camera's near and far planes based on model size
-  const maxZ = box.max.z;
-
   camera.updateProjectionMatrix();
 }
 
@@ -67,8 +78,13 @@ function loadGLTFModel() {
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         // TODO: Change material to frosted glass here
-        const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-
+        const material = new THREE.MeshPhysicalMaterial({
+          roughness: .45,
+          transmission: .9,
+          thickness: .8,
+          // NOTE: A fresnel shader might be needed to emphasize the corners some more.
+        });
+        
         child.material = material;
       }
     });
