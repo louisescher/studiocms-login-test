@@ -60,7 +60,7 @@ function fitModelToViewport(model: THREE.Group<THREE.Object3DEventMap>) {
 
 function loadGLTFModel() {
   const loader = new GLTFLoader();
-  loader.load('/studiocms-logo.glb', (gltf) => {
+  loader.load('/studiocms-login-test/studiocms-logo.glb', (gltf) => {
     model = gltf.scene;
     model.rotation.set(Math.PI / 2, 0, 0);
 
