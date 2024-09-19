@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # lockfiles
 bun.lockb
+pnpm-lock.yml
+package-lock.json
+yarn.lock

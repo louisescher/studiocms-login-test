@@ -7,6 +7,8 @@ let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 let model: THREE.Group<THREE.Object3DEventMap>;
 let clock: THREE.Clock;
+let mouseX = 0;
+let mouseY = 0;
 
 function init() {
   scene = new THREE.Scene();
@@ -43,27 +45,20 @@ function addBackgroundTexture() {
   })
 }
 
-/**
- * ChatGPT function because I've never worked with basic three.js & models at the same time
- */
 function fitModelToViewport(model: THREE.Group<THREE.Object3DEventMap>) {
-  // Compute bounding box of the model
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
 
-  // Reposition and center the model
   model.position.x += (model.position.x - center.x);
   model.position.y += (model.position.y - center.y);
   model.position.z += (model.position.z - center.z);
 
-  // Calculate the model's largest dimension
   const maxDim = Math.max(size.x, size.y, size.z);
-  const fov = camera.fov * (Math.PI / 180); // Convert FOV to radians
+  const fov = camera.fov * (Math.PI / 180);
   let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
 
-  // Adjust camera position based on model size
-  cameraZ *= 2.5; // Factor to add space around the model (optional)
+  cameraZ *= 2.5;
   camera.position.z = cameraZ;
 
   camera.updateProjectionMatrix();
@@ -73,7 +68,6 @@ function loadGLTFModel() {
   const loader = new GLTFLoader();
   loader.load('/studiocms-login-test/studiocms-logo.glb', (gltf) => {
     model = gltf.scene;
-    model.rotation.set(Math.PI / 2, 0, 0);
 
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -84,7 +78,6 @@ function loadGLTFModel() {
           thickness: .8,
           // NOTE: A fresnel shader might be needed to emphasize the corners some more.
         });
-        
         child.material = material;
       }
     });
@@ -104,13 +97,22 @@ function loadGLTFModel() {
 }
 
 function animate() {
-  let time = clock.getElapsedTime();
-
   if (model) {
-    model.rotation.z = 0.25 * Math.sin(time * 1);
+    mouseX = mouseX > (window.innerWidth / 2) ? window.innerWidth / 2 : mouseX
+    const rotationX = (0.1 * ((mouseY / window.innerHeight) * Math.PI - Math.PI / 2)) + Math.PI / 2;
+    const rotationY = 0.1 * ((mouseX / (window.innerWidth / 2)) * Math.PI - Math.PI / 2);
+
+    model.rotation.z = -rotationY;
+    model.rotation.x = rotationX;
   }
 
   renderer.render(scene, camera);
 }
+
+// Mouse move event listener to capture and update mouse coordinates
+document.addEventListener('mousemove', (ev) => {
+  mouseX = ev.clientX;
+  mouseY = ev.clientY;
+});
 
 init();
