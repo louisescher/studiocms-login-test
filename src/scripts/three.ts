@@ -6,6 +6,7 @@ let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 let model: THREE.Group<THREE.Object3DEventMap>;
+let clock: THREE.Clock;
 
 function init() {
   scene = new THREE.Scene();
@@ -13,7 +14,7 @@ function init() {
 
   camera = new THREE.PerspectiveCamera(75, (window.innerWidth / 2) / window.innerHeight, 0.01, 10000);
 
-  renderer = new THREE.WebGLRenderer();
+  renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth / 2, window.innerHeight);
 
   canvasContainer = document.querySelector<HTMLDivElement>('#canvas-container');
@@ -22,6 +23,8 @@ function init() {
   canvasContainer.appendChild(renderer.domElement);
 
   renderer.setAnimationLoop(animate);
+
+  clock = new THREE.Clock();
 
   loadGLTFModel();
 }
@@ -51,8 +54,6 @@ function fitModelToViewport(model: THREE.Group<THREE.Object3DEventMap>) {
 
   // Update camera's near and far planes based on model size
   const maxZ = box.max.z;
-  camera.near = Math.max(0.1, cameraZ - maxZ);
-  camera.far = cameraZ + maxZ;
 
   camera.updateProjectionMatrix();
 }
@@ -62,6 +63,15 @@ function loadGLTFModel() {
   loader.load('/studiocms-logo.glb', (gltf) => {
     model = gltf.scene;
     model.rotation.set(Math.PI / 2, 0, 0);
+
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        // TODO: Change material to frosted glass here
+        const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+
+        child.material = material;
+      }
+    });
 
     const light = new THREE.DirectionalLight(0xFFFFFF);
     light.position.set(0, 2, 5);
@@ -78,6 +88,12 @@ function loadGLTFModel() {
 }
 
 function animate() {
+  let time = clock.getElapsedTime();
+
+  if (model) {
+    model.rotation.z = 0.25 * Math.sin(time * 1);
+  }
+
   renderer.render(scene, camera);
 }
 
