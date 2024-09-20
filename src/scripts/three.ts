@@ -21,6 +21,8 @@ const validImages = [
   { name: 'astro-rays', format: 'png'},
   { name: 'studiocms-blobs', format: 'png'},
   { name: 'studiocms-blobs-light', format: 'png'},
+  { name: 'studiocms-curves', format: 'png'},
+  { name: 'studiocms-curves-light', format: 'png'},
   { name: 'custom', format: 'web' },
 ] as const;
 
@@ -65,7 +67,7 @@ class StudioCMS3DLogo {
   outlinePass: OutlinePass | undefined;
   outlinedObjects: THREE.Group<THREE.Object3DEventMap>[] = [];
   defaultComputedCameraZ: number | undefined;
-  debugBackgroundMesh: THREE.Mesh | undefined;
+  BackgroundMesh: THREE.Mesh | undefined;
   frustumHeight: number | undefined;
 
   /**
@@ -73,9 +75,8 @@ class StudioCMS3DLogo {
    * @param containerEl The container that the canvas is placed in.
    * @param outlineColor Color of the outline for the StudioCMS logo
    * @param reducedMotion Whether the user prefers reduced motion or not
-   * @param debugWithBackgroundImage Whether to show a background image for debugging purposes. Disables the bloom effect.
    */
-  constructor(containerEl: HTMLDivElement, outlineColor: THREE.Color, reducedMotion: boolean, debugWithBackgroundImage?: boolean, image?: ValidImage) {
+  constructor(containerEl: HTMLDivElement, outlineColor: THREE.Color, reducedMotion: boolean, image: ValidImage) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x101010);
   
@@ -102,12 +103,10 @@ class StudioCMS3DLogo {
     this.composer.addPass(renderScene);
 
     this.loadLogoModel();
-    this.addPostProcessing(true, true, true, outlineColor, debugWithBackgroundImage || false);
+    this.addPostProcessing(true, true, true, outlineColor);
 
-    if (debugWithBackgroundImage) {
-      this.addDebugBackgroundImage(image || validImages[0]);
-      this.initTweakpane();
-    }
+    this.addBackgroundImage(image || validImages[0]);
+    this.initTweakpane();
 
     this.initListeners(reducedMotion);
     this.registerLoadingCallback();
@@ -124,8 +123,6 @@ class StudioCMS3DLogo {
       this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, targetRotationX, lerpFactor);
       this.model.rotation.y = THREE.MathUtils.lerp(this.model.rotation.y, 0, lerpFactor);
       this.model.rotation.z = THREE.MathUtils.lerp(this.model.rotation.z, -targetRotationY, lerpFactor);
-
-      // this.model.rotation.set(rotationX, 0, -rotationY);
     }
   
     this.composer.render();
@@ -142,14 +139,6 @@ class StudioCMS3DLogo {
         const isMesh = child instanceof THREE.Mesh;
 
         if (!isMesh) return;
-
-        // const material1_old = new THREE.MeshPhysicalMaterial({
-        //   roughness: .45,
-        //   transmission: .9,
-        //   thickness: .8,
-        //   clearcoat: .5,
-        //   clearcoatRoughness: .5
-        // });
 
         const material = new THREE.MeshPhysicalMaterial(PARAMS);
 
@@ -168,8 +157,9 @@ class StudioCMS3DLogo {
     });
   }
 
-  addPostProcessing = (bloom: boolean, outlines: boolean, smaa: boolean, outlineColor: THREE.Color, debugImage: boolean) => {
-    if (bloom && !debugImage) this.addBloom();
+  addPostProcessing = (bloom: boolean, outlines: boolean, smaa: boolean, outlineColor: THREE.Color) => {
+    // TODO: Bloom only model, not background
+    // if (bloom) this.addBloom();
     if (outlines) this.addOutlines(outlineColor);
     if (smaa) this.addSMAA();
   }
@@ -178,12 +168,12 @@ class StudioCMS3DLogo {
     this.outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight), this.scene, this.camera);
   
     this.outlinePass.selectedObjects = this.outlinedObjects;
-    this.outlinePass.edgeStrength = 2.0;
+    this.outlinePass.edgeStrength = 1.5;
     this.outlinePass.edgeGlow = 0;
-    this.outlinePass.edgeThickness = .1;
+    this.outlinePass.edgeThickness = .0000000001;
     this.outlinePass.pulsePeriod = 0;
     this.outlinePass.visibleEdgeColor.set(outlineColor);
-    this.outlinePass.hiddenEdgeColor.set(new THREE.Color(0x000000));
+    this.outlinePass.hiddenEdgeColor.set(new THREE.Color(0xffffff));
     
     this.composer.addPass(this.outlinePass);
   }
@@ -203,7 +193,7 @@ class StudioCMS3DLogo {
     this.composer.addPass(smaaPass);
   }
 
-  addDebugBackgroundImage = (image: ValidImage) => {
+  addBackgroundImage = (image: ValidImage) => {
     const bgPositionZ = -5;
 
     // Height of the viewcone
@@ -219,10 +209,10 @@ class StudioCMS3DLogo {
       const bgGeo = new THREE.PlaneGeometry(planeWidth, planeHeight);
       const bgMat = new THREE.MeshBasicMaterial({ map: texture });
 
-      this.debugBackgroundMesh = new THREE.Mesh(bgGeo, bgMat);
+      this.BackgroundMesh = new THREE.Mesh(bgGeo, bgMat);
   
-      this.debugBackgroundMesh.position.set(0, 0, bgPositionZ);
-      this.scene.add(this.debugBackgroundMesh);
+      this.BackgroundMesh.position.set(0, 0, bgPositionZ);
+      this.scene.add(this.BackgroundMesh);
     });
   }
 
@@ -292,14 +282,14 @@ class StudioCMS3DLogo {
     });
     
     imageBlade.on('change', ({ value }) => {
-      if (!this.debugBackgroundMesh) return;
+      if (!this.BackgroundMesh) return;
 
       const image = validImages.find((x) => x.name === value);
 
       if (!image) return;
 
-      this.debugBackgroundMesh!.removeFromParent();
-      this.addDebugBackgroundImage(image);
+      this.BackgroundMesh!.removeFromParent();
+      this.addBackgroundImage(image);
     });
 
     let hrefBlade = f1.addBinding(PARAMS, 'customImageHref');
@@ -307,7 +297,7 @@ class StudioCMS3DLogo {
     hrefBlade.on('change', ({ value }) => {
       if (PARAMS.background !== 'custom') return;
 
-      this.addDebugBackgroundImage({ name: value as any, format: 'web' });
+      this.addBackgroundImage({ name: value as any, format: 'web' });
     });
 
     let f2 = pane.addFolder({
@@ -430,7 +420,7 @@ const usingReducedMotion = window.matchMedia(`(prefers-reduced-motion: reduce)`)
 const smallScreen = window.matchMedia(`(max-width: 850px)`).matches === true;
 
 if (!smallScreen) {
-  new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, true, validImages[0]);
+  new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, validImages[0]);
 }
 
 // TODO:
