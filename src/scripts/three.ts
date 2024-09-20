@@ -14,17 +14,18 @@ import { Pane } from 'tweakpane';
  * List of valid images.
  */
 const validImages = [
-  { name: 'sky', format: 'png' },
+  { name: 'skyline', format: 'png' },
   { name: 'grid-1', format: 'png' },
   { name: 'grid-2', format: 'png' },
-  { name: 'layers', format: 'png' },
+  { name: 'astro-layers', format: 'png' },
+  { name: 'astro-rays', format: 'png'},
   { name: 'custom', format: 'web' },
 ] as const;
 
 type ValidImage = typeof validImages[number];
 
 const PARAMS = {
-  background: 'sky',
+  background: 'skyline',
   // ---
   color: '#ffffff',
   roughness: 0.6,
