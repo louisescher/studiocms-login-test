@@ -2,7 +2,6 @@ import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
@@ -165,7 +164,6 @@ class StudioCMS3DLogo {
 
   addPostProcessing = (bloom: boolean, outlines: boolean, smaa: boolean, outlineColor: THREE.Color) => {
     // TODO: Bloom only model, not background
-    // if (bloom) this.addBloom();
     if (outlines) this.addOutlines(outlineColor);
     if (smaa) this.addSMAA();
   }
@@ -182,15 +180,6 @@ class StudioCMS3DLogo {
     this.outlinePass.hiddenEdgeColor.set(new THREE.Color(0xffffff));
     
     this.composer.addPass(this.outlinePass);
-  }
-  
-  addBloom = () => {
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight), 1.5, 0.4, .85);
-    bloomPass.threshold = 0;
-    bloomPass.strength = 1.2;
-    bloomPass.radius = 0;
-  
-    this.composer.addPass(bloomPass);
   }
 
   addSMAA = () => {
