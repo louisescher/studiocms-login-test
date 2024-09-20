@@ -1,10 +1,44 @@
 import * as THREE from 'three';
+
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { fitModelToViewport } from '@/utils/fitModelToViewport';
+
+import { Pane } from 'tweakpane';
+
+/**
+ * List of valid images.
+ */
+const validImages = [
+  { name: 'sky', format: 'png' },
+  { name: 'grid-1', format: 'png' },
+  { name: 'grid-2', format: 'png' },
+  { name: 'layers', format: 'png' },
+  { name: 'custom', format: 'web' },
+] as const;
+
+type ValidImage = typeof validImages[number];
+
+const PARAMS = {
+  background: 'sky',
+  // ---
+  color: '#ffffff',
+  roughness: 0.6,
+  transmission: 1,
+  opacity: 1,
+  transparent: true,
+  thickness: 0.5,
+  envMapIntensity: 1,
+  clearcoat: 1,
+  clearcoatRoughness: 0.2,
+  metalness: 0,
+  // ---
+  outlineColor: '#aa87f4',
+  customImageHref: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1744&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+};
 
 /**
  * Creates the StudioCMS Logo along with its background in a specified container.
@@ -19,8 +53,11 @@ class StudioCMS3DLogo {
   mouseY: number = 0;
   time: THREE.Clock;
   composer: EffectComposer;
+  outlinePass: OutlinePass | undefined;
   outlinedObjects: THREE.Group<THREE.Object3DEventMap>[] = [];
   defaultComputedCameraZ: number | undefined;
+  debugBackgroundMesh: THREE.Mesh | undefined;
+  frustumHeight: number | undefined;
 
   /**
    * Creates the StudioCMS Logo along with its background in a specified container.
@@ -29,7 +66,7 @@ class StudioCMS3DLogo {
    * @param reducedMotion Whether the user prefers reduced motion or not
    * @param debugWithBackgroundImage Whether to show a background image for debugging purposes. Disables the bloom effect.
    */
-  constructor(containerEl: HTMLDivElement, outlineColor: THREE.Color, reducedMotion: boolean, debugWithBackgroundImage?: boolean) {
+  constructor(containerEl: HTMLDivElement, outlineColor: THREE.Color, reducedMotion: boolean, debugWithBackgroundImage?: boolean, image?: ValidImage) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x101010);
   
@@ -58,7 +95,8 @@ class StudioCMS3DLogo {
     this.addPostProcessing(true, true, outlineColor, debugWithBackgroundImage || false);
 
     if (debugWithBackgroundImage) {
-      this.addDebugBackgroundImage();
+      this.addDebugBackgroundImage(image || validImages[0]);
+      this.initTweakpane();
     }
 
     this.initListeners(reducedMotion);
@@ -95,13 +133,15 @@ class StudioCMS3DLogo {
 
         if (!isMesh) return;
 
-        const material = new THREE.MeshPhysicalMaterial({
-          roughness: .45,
-          transmission: .9,
-          thickness: .8,
-          clearcoat: .5,
-          clearcoatRoughness: .5
-        });
+        // const material1_old = new THREE.MeshPhysicalMaterial({
+        //   roughness: .45,
+        //   transmission: .9,
+        //   thickness: .8,
+        //   clearcoat: .5,
+        //   clearcoatRoughness: .5
+        // });
+
+        const material = new THREE.MeshPhysicalMaterial(PARAMS);
 
         child.material = material;
       });
@@ -124,17 +164,17 @@ class StudioCMS3DLogo {
   }
 
   addOutlines = (outlineColor: THREE.Color) => {
-    const outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight), this.scene, this.camera);
+    this.outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight), this.scene, this.camera);
   
-    outlinePass.selectedObjects = this.outlinedObjects;
-    outlinePass.edgeStrength = 2.0;
-    outlinePass.edgeGlow = 0;
-    outlinePass.edgeThickness = .1;
-    outlinePass.pulsePeriod = 0;
-    outlinePass.visibleEdgeColor.set(outlineColor);
-    outlinePass.hiddenEdgeColor.set(new THREE.Color(0x000000));
+    this.outlinePass.selectedObjects = this.outlinedObjects;
+    this.outlinePass.edgeStrength = 2.0;
+    this.outlinePass.edgeGlow = 0;
+    this.outlinePass.edgeThickness = .1;
+    this.outlinePass.pulsePeriod = 0;
+    this.outlinePass.visibleEdgeColor.set(outlineColor);
+    this.outlinePass.hiddenEdgeColor.set(new THREE.Color(0x000000));
     
-    this.composer.addPass(outlinePass);
+    this.composer.addPass(this.outlinePass);
   }
   
   addBloom = () => {
@@ -146,16 +186,26 @@ class StudioCMS3DLogo {
     this.composer.addPass(bloomPass);
   }
 
-  addDebugBackgroundImage = () => {
-    const loader = new THREE.TextureLoader();
+  addDebugBackgroundImage = (image: ValidImage) => {
+    const bgPositionZ = -5;
+
+    // Height of the viewcone
+    if (!this.frustumHeight) {
+      this.frustumHeight = 9 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.abs(this.camera.position.z - bgPositionZ);
+    }
     
-    loader.loadAsync("/studiocms-login-test/nLaGdDJ.png").then((texture) => {
-      const bgGeo = new THREE.PlaneGeometry(45, 90);
-      const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
-      const bgMesh = new THREE.Mesh(bgGeo, bgMaterial);
+    const loader = new THREE.TextureLoader();
+    loader.loadAsync(image.format === 'web' ? PARAMS.customImageHref : `/studiocms-login-test/${image.name}.${image.format}`).then((texture) => {
+      const planeHeight = this.frustumHeight!;
+      const planeWidth = planeHeight * (texture.source.data.width / texture.source.data.height);
+
+      const bgGeo = new THREE.PlaneGeometry(planeWidth, planeHeight);
+      const bgMat = new THREE.MeshBasicMaterial({ map: texture });
+
+      this.debugBackgroundMesh = new THREE.Mesh(bgGeo, bgMat);
   
-      bgMesh.position.set(0, 0, -10);
-      this.scene.add(bgMesh);
+      this.debugBackgroundMesh.position.set(0, 0, bgPositionZ);
+      this.scene.add(this.debugBackgroundMesh);
     });
   }
 
@@ -207,26 +257,132 @@ class StudioCMS3DLogo {
       this.canvasContainer.classList.add("loaded");
     }
   }
+
+  initTweakpane = () => {
+    const pane = new Pane({
+      title: 'Dev Settings',
+    });
+
+    let f1 = pane.addFolder({
+      title: 'Background',
+    });
+
+    let imageBlade = f1.addBinding(PARAMS, 'background', {
+      options: validImages.map((image) => ({
+        text: image.name, value: image.name
+      })),
+    });
+    
+    imageBlade.on('change', ({ value }) => {
+      if (!this.debugBackgroundMesh) return;
+
+      const image = validImages.find((x) => x.name === value);
+
+      if (!image) return;
+
+      this.debugBackgroundMesh!.removeFromParent();
+      this.addDebugBackgroundImage(image);
+    });
+
+    let hrefBlade = f1.addBinding(PARAMS, 'customImageHref');
+    
+    hrefBlade.on('change', ({ value }) => {
+      if (PARAMS.background !== 'custom') return;
+
+      this.addDebugBackgroundImage({ name: value as any, format: 'web' });
+    });
+
+    let f2 = pane.addFolder({
+      title: 'Frosted Glass Material',
+    });
+    
+    f2.addBinding(PARAMS, 'color').on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'roughness', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'transmission', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'opacity', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'transparent', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'thickness', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'envMapIntensity', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'clearcoat', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'clearcoatRoughness', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    f2.addBinding(PARAMS, 'metalness', {
+      min: 0,
+      max: 1
+    }).on('change', this.recomputeGlassMaterial);
+
+    let f3 = pane.addFolder({
+      title: 'Model Outline',
+    });
+
+    f3.addBinding(PARAMS, 'outlineColor').on('change', ({ value }) => {
+      if (!this.outlinePass) return;
+
+      this.outlinePass.visibleEdgeColor = new THREE.Color(value as THREE.ColorRepresentation);
+    });
+  }
+
+  recomputeGlassMaterial = () => {
+    if (!this.model) return;
+
+    this.model.traverse((child) => {
+      const isMesh = child instanceof THREE.Mesh;
+
+      if (!isMesh) return;
+
+      // const material1_old = new THREE.MeshPhysicalMaterial({
+      //   roughness: .45,
+      //   transmission: .9,
+      //   thickness: .8,
+      //   clearcoat: .5,
+      //   clearcoatRoughness: .5
+      // });
+
+      const material = new THREE.MeshPhysicalMaterial(PARAMS);
+
+      child.material = material;
+    });
+  }
 }
-
-// function addSphere() {
-//   const sphere = new THREE.SphereGeometry(1);
-//   const sphereMaterial = new THREE.MeshStandardMaterial({
-//     emissive: new THREE.Color(0x6366f1),
-//   });
-
-//   sphereMesh = new THREE.Mesh(sphere, sphereMaterial);
-
-//   sphereMesh.position.set(0, 0, -1);
-//   scene.add(sphereMesh);
-// }
 
 const logoContainer = document.querySelector<HTMLDivElement>('#canvas-container')!;
 const usingReducedMotion = window.matchMedia(`(prefers-reduced-motion: reduce)`).matches === true;
 const smallScreen = window.matchMedia(`(max-width: 850px)`).matches === true;
 
 if (!smallScreen) {
-  new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, true);
+  new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, true, validImages[0]);
 }
 
 // TODO:
