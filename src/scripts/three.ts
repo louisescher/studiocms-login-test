@@ -5,6 +5,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { fitModelToViewport } from '@/utils/fitModelToViewport';
 
 import { Pane } from 'tweakpane';
@@ -38,6 +39,9 @@ const PARAMS = {
   // ---
   outlineColor: '#aa87f4',
   customImageHref: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1744&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  edgeStrength: 2.0,
+  edgeThickness: .1,
+  edgeGlow: 0,
 };
 
 /**
@@ -72,8 +76,9 @@ class StudioCMS3DLogo {
   
     this.camera = new THREE.PerspectiveCamera(75, (window.innerWidth / 2) / window.innerHeight, 0.01, 10000);
   
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: false });
     this.renderer.setSize(window.innerWidth / 2, window.innerHeight);
+    this.renderer.setPixelRatio(window.devicePixelRatio * 2);
     this.renderer.setClearColor(0x101010, 1);
     this.renderer.setAnimationLoop(this.animate);
 
@@ -92,7 +97,7 @@ class StudioCMS3DLogo {
     this.composer.addPass(renderScene);
 
     this.loadLogoModel();
-    this.addPostProcessing(true, true, outlineColor, debugWithBackgroundImage || false);
+    this.addPostProcessing(true, true, true, outlineColor, debugWithBackgroundImage || false);
 
     if (debugWithBackgroundImage) {
       this.addDebugBackgroundImage(image || validImages[0]);
@@ -158,9 +163,10 @@ class StudioCMS3DLogo {
     });
   }
 
-  addPostProcessing = (bloom: boolean, outlines: boolean, outlineColor: THREE.Color, debugImage: boolean) => {
+  addPostProcessing = (bloom: boolean, outlines: boolean, smaa: boolean, outlineColor: THREE.Color, debugImage: boolean) => {
     if (bloom && !debugImage) this.addBloom();
-    if (outlines) this.addOutlines(outlineColor)
+    if (outlines) this.addOutlines(outlineColor);
+    if (smaa) this.addSMAA();
   }
 
   addOutlines = (outlineColor: THREE.Color) => {
@@ -184,6 +190,12 @@ class StudioCMS3DLogo {
     bloomPass.radius = 0;
   
     this.composer.addPass(bloomPass);
+  }
+
+  addSMAA = () => {
+    const smaaPass = new SMAAPass(window.innerWidth / 2, window.innerHeight);
+    smaaPass.renderToScreen = true;
+    this.composer.addPass(smaaPass);
   }
 
   addDebugBackgroundImage = (image: ValidImage) => {
@@ -351,6 +363,33 @@ class StudioCMS3DLogo {
       if (!this.outlinePass) return;
 
       this.outlinePass.visibleEdgeColor = new THREE.Color(value as THREE.ColorRepresentation);
+    });
+
+    f3.addBinding(PARAMS, 'edgeStrength', {
+      min: 0,
+      max: 5,
+    }).on('change', ({ value }) => {
+      if (!this.outlinePass) return;
+  
+      this.outlinePass.edgeStrength = value;
+    });
+
+    f3.addBinding(PARAMS, 'edgeGlow', {
+      min: 0,
+      max: 25,
+    }).on('change', ({ value }) => {
+      if (!this.outlinePass) return;
+  
+      this.outlinePass.edgeGlow = value;
+    });
+
+    f3.addBinding(PARAMS, 'edgeThickness', {
+      min: 0.1,
+      max: 1,
+    }).on('change', ({ value }) => {
+      if (!this.outlinePass) return;
+  
+      this.outlinePass.edgeThickness = value;
     });
   }
 
