@@ -149,12 +149,12 @@ class StudioCMS3DLogo {
   addDebugBackgroundImage = () => {
     const loader = new THREE.TextureLoader();
     
-    loader.loadAsync("/studiocms-login-test/evening-sky.png").then((texture) => {
-      const bgGeo = new THREE.PlaneGeometry(15, 15);
+    loader.loadAsync("/studiocms-login-test/nLaGdDJ.png").then((texture) => {
+      const bgGeo = new THREE.PlaneGeometry(45, 90);
       const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
       const bgMesh = new THREE.Mesh(bgGeo, bgMaterial);
   
-      bgMesh.position.set(0, 0, -1);
+      bgMesh.position.set(0, 0, -10);
       this.scene.add(bgMesh);
     });
   }
@@ -226,7 +226,7 @@ const usingReducedMotion = window.matchMedia(`(prefers-reduced-motion: reduce)`)
 const smallScreen = window.matchMedia(`(max-width: 850px)`).matches === true;
 
 if (!smallScreen) {
-  new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, false);
+  new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, true);
 }
 
 // TODO:
