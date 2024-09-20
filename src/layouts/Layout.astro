@@ -32,15 +32,39 @@ const { title } = Astro.props;
 		font-display: swap;
 	}
 
+	:root {
+		--background: #101010;
+		--background-step-2: #191919;
+		--text: #ffffff;
+		--text-muted: #8A8A8A;
+		--text-inverted: #000000;
+		--border: #29292d;
+		--primary: #AA87F4;
+		--primary-hover: #a07cee;
+		--primary-focus: #956fe9;
+	}
+
+	:root.light {
+		--background: #ebebeb;
+		--background-step-2: #d0d0d0;
+		--text: #000000;
+		--text-muted: #3e3e3e;
+		--text-inverted: #ffffff;
+		--border: #adaab2;
+		--primary: #7c45f0;
+		--primary-hover: #8350f1;
+		--primary-focus: #8c5bf7;
+	}
+
 	* {
 		font-family: 'Mona Sans';
 	}
 
 	html {
 		font-family: system-ui, sans-serif;
-		background: #101010;
+		background: var(--background);
 		box-sizing: border-box;
-		color: #ffffff;
+		color: var(--text);
 	}
 	
 	html, body {

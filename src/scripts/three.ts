@@ -19,6 +19,8 @@ const validImages = [
   { name: 'grid-2', format: 'png' },
   { name: 'astro-layers', format: 'png' },
   { name: 'astro-rays', format: 'png'},
+  { name: 'studiocms-blobs', format: 'png'},
+  { name: 'studiocms-blobs-light', format: 'png'},
   { name: 'custom', format: 'web' },
 ] as const;
 
@@ -43,6 +45,8 @@ const PARAMS = {
   edgeStrength: 2.0,
   edgeThickness: .1,
   edgeGlow: 0,
+  // ---
+  lightMode: false,
 };
 
 /**
@@ -278,6 +282,7 @@ class StudioCMS3DLogo {
 
     let f1 = pane.addFolder({
       title: 'Background',
+      expanded: false,
     });
 
     let imageBlade = f1.addBinding(PARAMS, 'background', {
@@ -307,6 +312,7 @@ class StudioCMS3DLogo {
 
     let f2 = pane.addFolder({
       title: 'Frosted Glass Material',
+      expanded: false,
     });
     
     f2.addBinding(PARAMS, 'color').on('change', this.recomputeGlassMaterial);
@@ -358,6 +364,7 @@ class StudioCMS3DLogo {
 
     let f3 = pane.addFolder({
       title: 'Model Outline',
+      expanded: false,
     });
 
     f3.addBinding(PARAMS, 'outlineColor').on('change', ({ value }) => {
@@ -392,6 +399,15 @@ class StudioCMS3DLogo {
   
       this.outlinePass.edgeThickness = value;
     });
+
+    let f4 = pane.addFolder({
+      title: 'Site',
+      expanded: false,
+    });
+
+    f4.addBinding(PARAMS, 'lightMode').on('change', () => {
+      document.documentElement.classList.toggle('light');
+    })
   }
 
   recomputeGlassMaterial = () => {
@@ -401,14 +417,6 @@ class StudioCMS3DLogo {
       const isMesh = child instanceof THREE.Mesh;
 
       if (!isMesh) return;
-
-      // const material1_old = new THREE.MeshPhysicalMaterial({
-      //   roughness: .45,
-      //   transmission: .9,
-      //   thickness: .8,
-      //   clearcoat: .5,
-      //   clearcoatRoughness: .5
-      // });
 
       const material = new THREE.MeshPhysicalMaterial(PARAMS);
 

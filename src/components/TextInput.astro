@@ -27,13 +27,13 @@ const { label, placeholder, type } = Astro.props;
   .input {
     padding: .65rem 1rem;
     border-radius: 8px;
-    border: 1px solid #29292D;
-    background: #191919;
-    color: white;
+    border: 1px solid var(--border);
+    background: var(--background-step-2);
+    color: var(--text);
   }
 
   .input:active, .input:focus {
-    border: 1px solid #aa87f4;
+    border: 1px solid var(--primary);
     outline: none;
   }
 </style>

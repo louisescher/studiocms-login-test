@@ -38,7 +38,7 @@ import GitHubButton from '@/components/GitHubButton.astro';
 		height: 100vh;
 		width: 100vw;
 		overflow: hidden;
-		color: white;
+		color: var(--text);
 	}
 
 	#canvas-container, .login-form-container {
@@ -57,7 +57,7 @@ import GitHubButton from '@/components/GitHubButton.astro';
 	}
 
 	.login-form-container {
-		border-left: 1px solid #27272a;
+		border-left: 1px solid var(--border);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -100,7 +100,7 @@ import GitHubButton from '@/components/GitHubButton.astro';
 	}
 
 	.form p {
-    color: #8A8A8A;
+    color: var(--text-muted);
 	}
 
 	#canvas {

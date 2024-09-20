@@ -20,7 +20,7 @@ const { type, stretch } = Astro.props;
     gap: .5rem;
     text-align: center;
     border-radius: .5rem;
-    background-color: #AA87F4;
+    background-color: var(--primary);
     font-weight: 500;
     font-size: .925em;
     outline: none;
@@ -28,14 +28,15 @@ const { type, stretch } = Astro.props;
     transition: background-color .1s ease;
     cursor: pointer;
     margin-top: .5rem;
+    color: var(--text-inverted);
   }
 
   .button:hover {
-    background-color: #a07cee;
+    background-color: var(--primary-hover);
   }
 
   .button:active {
-    background-color: #956fe9;
+    background-color: var(--primary-focus);
   }
 
   .full {
