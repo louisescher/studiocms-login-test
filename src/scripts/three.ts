@@ -28,9 +28,12 @@ const validImages = [
 
 type ValidImage = typeof validImages[number];
 
-const PARAMS = {
+const bgPARAMS = {
   background: 'skyline',
-  // ---
+  customImageHref: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa',
+};
+
+const glassPARAMS = {
   color: '#ffffff',
   roughness: 0.6,
   transmission: 1,
@@ -41,15 +44,18 @@ const PARAMS = {
   clearcoat: 1,
   clearcoatRoughness: 0.2,
   metalness: 0,
-  // ---
-  outlineColor: '#aa87f4',
-  customImageHref: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1744&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-  edgeStrength: 2.0,
-  edgeThickness: .1,
-  edgeGlow: 0,
-  // ---
-  lightMode: false,
 };
+
+const outlinePARAMS = {
+  outlineColor: '#aa87f4',
+  edgeStrength: .6,
+  edgeThickness: .1,
+  edgeGlow: 5.0,
+};
+
+const sitePARAMS = {
+  lightMode: false,
+}
 
 /**
  * Creates the StudioCMS Logo along with its background in a specified container.
@@ -140,7 +146,7 @@ class StudioCMS3DLogo {
 
         if (!isMesh) return;
 
-        const material = new THREE.MeshPhysicalMaterial(PARAMS);
+        const material = new THREE.MeshPhysicalMaterial(glassPARAMS);
 
         child.material = material;
       });
@@ -202,7 +208,7 @@ class StudioCMS3DLogo {
     }
     
     const loader = new THREE.TextureLoader();
-    loader.loadAsync(image.format === 'web' ? PARAMS.customImageHref : `/studiocms-login-test/${image.name}.${image.format}`).then((texture) => {
+    loader.loadAsync(image.format === 'web' ? bgPARAMS.customImageHref : `/studiocms-login-test/${image.name}.${image.format}`).then((texture) => {
       const planeHeight = this.frustumHeight!;
       const planeWidth = planeHeight * (texture.source.data.width / texture.source.data.height);
 
@@ -275,7 +281,7 @@ class StudioCMS3DLogo {
       expanded: false,
     });
 
-    let imageBlade = f1.addBinding(PARAMS, 'background', {
+    let imageBlade = f1.addBinding(bgPARAMS, 'background', {
       options: validImages.map((image) => ({
         text: image.name, value: image.name
       })),
@@ -292,10 +298,10 @@ class StudioCMS3DLogo {
       this.addBackgroundImage(image);
     });
 
-    let hrefBlade = f1.addBinding(PARAMS, 'customImageHref');
+    let hrefBlade = f1.addBinding(bgPARAMS, 'customImageHref');
     
     hrefBlade.on('change', ({ value }) => {
-      if (PARAMS.background !== 'custom') return;
+      if (bgPARAMS.background !== 'custom') return;
 
       this.addBackgroundImage({ name: value as any, format: 'web' });
     });
@@ -305,49 +311,49 @@ class StudioCMS3DLogo {
       expanded: false,
     });
     
-    f2.addBinding(PARAMS, 'color').on('change', this.recomputeGlassMaterial);
+    f2.addBinding(glassPARAMS, 'color').on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'roughness', {
+    f2.addBinding(glassPARAMS, 'roughness', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'transmission', {
+    f2.addBinding(glassPARAMS, 'transmission', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'opacity', {
+    f2.addBinding(glassPARAMS, 'opacity', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'transparent', {
+    f2.addBinding(glassPARAMS, 'transparent', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'thickness', {
+    f2.addBinding(glassPARAMS, 'thickness', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'envMapIntensity', {
+    f2.addBinding(glassPARAMS, 'envMapIntensity', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'clearcoat', {
+    f2.addBinding(glassPARAMS, 'clearcoat', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'clearcoatRoughness', {
+    f2.addBinding(glassPARAMS, 'clearcoatRoughness', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
 
-    f2.addBinding(PARAMS, 'metalness', {
+    f2.addBinding(glassPARAMS, 'metalness', {
       min: 0,
       max: 1
     }).on('change', this.recomputeGlassMaterial);
@@ -357,13 +363,13 @@ class StudioCMS3DLogo {
       expanded: false,
     });
 
-    f3.addBinding(PARAMS, 'outlineColor').on('change', ({ value }) => {
+    f3.addBinding(outlinePARAMS, 'outlineColor').on('change', ({ value }) => {
       if (!this.outlinePass) return;
 
       this.outlinePass.visibleEdgeColor = new THREE.Color(value as THREE.ColorRepresentation);
     });
 
-    f3.addBinding(PARAMS, 'edgeStrength', {
+    f3.addBinding(outlinePARAMS, 'edgeStrength', {
       min: 0,
       max: 5,
     }).on('change', ({ value }) => {
@@ -372,7 +378,7 @@ class StudioCMS3DLogo {
       this.outlinePass.edgeStrength = value;
     });
 
-    f3.addBinding(PARAMS, 'edgeGlow', {
+    f3.addBinding(outlinePARAMS, 'edgeGlow', {
       min: 0,
       max: 25,
     }).on('change', ({ value }) => {
@@ -381,7 +387,7 @@ class StudioCMS3DLogo {
       this.outlinePass.edgeGlow = value;
     });
 
-    f3.addBinding(PARAMS, 'edgeThickness', {
+    f3.addBinding(outlinePARAMS, 'edgeThickness', {
       min: 0.1,
       max: 1,
     }).on('change', ({ value }) => {
@@ -395,7 +401,7 @@ class StudioCMS3DLogo {
       expanded: false,
     });
 
-    f4.addBinding(PARAMS, 'lightMode').on('change', () => {
+    f4.addBinding(sitePARAMS, 'lightMode').on('change', () => {
       document.documentElement.classList.toggle('light');
     })
   }
@@ -408,7 +414,7 @@ class StudioCMS3DLogo {
 
       if (!isMesh) return;
 
-      const material = new THREE.MeshPhysicalMaterial(PARAMS);
+      const material = new THREE.MeshPhysicalMaterial(glassPARAMS);
 
       child.material = material;
     });
@@ -425,4 +431,3 @@ if (!smallScreen) {
 
 // TODO:
 // 1. Background anim (Astro Logo?)
-// 2. On screen sizes between 1100px & 850px, make the camera be further away / the logo smaller
