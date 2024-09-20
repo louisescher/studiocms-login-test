@@ -108,7 +108,7 @@ class StudioCMS3DLogo {
     this.composer.addPass(renderScene);
 
     this.loadLogoModel();
-    this.addPostProcessing(true, true, true, outlineColor);
+    this.addPostProcessing(true, true, outlineColor);
 
     this.addBackgroundImage(image || validImages[0]);
     this.initTweakpane();
@@ -162,8 +162,7 @@ class StudioCMS3DLogo {
     });
   }
 
-  addPostProcessing = (bloom: boolean, outlines: boolean, smaa: boolean, outlineColor: THREE.Color) => {
-    // TODO: Bloom only model, not background
+  addPostProcessing = (outlines: boolean, smaa: boolean, outlineColor: THREE.Color) => {
     if (outlines) this.addOutlines(outlineColor);
     if (smaa) this.addSMAA();
   }
