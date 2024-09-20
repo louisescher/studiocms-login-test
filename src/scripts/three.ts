@@ -3,150 +3,233 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
+import { fitModelToViewport } from '@/utils/fitModelToViewport';
 
-let canvasContainer: HTMLDivElement | null;
-let scene: THREE.Scene;
-let camera: THREE.PerspectiveCamera;
-let renderer: THREE.WebGLRenderer;
-let model: THREE.Group<THREE.Object3DEventMap>;
-let sphereMesh: THREE.Mesh;
-let mouseX = 0;
-let mouseY = 0;
-let time: THREE.Clock;
-let composer: EffectComposer;
+/**
+ * Creates the StudioCMS Logo along with its background in a specified container.
+ */
+class StudioCMS3DLogo {
+  canvasContainer: HTMLDivElement;
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+  model: THREE.Group<THREE.Object3DEventMap> | undefined;
+  mouseX: number = 0;
+  mouseY: number = 0;
+  time: THREE.Clock;
+  composer: EffectComposer;
+  outlinedObjects: THREE.Group<THREE.Object3DEventMap>[] = [];
+  defaultComputedCameraZ: number | undefined;
 
-function init() {
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x101010);
+  /**
+   * Creates the StudioCMS Logo along with its background in a specified container.
+   * @param containerEl The container that the canvas is placed in.
+   * @param outlineColor Color of the outline for the StudioCMS logo
+   * @param reducedMotion Whether the user prefers reduced motion or not
+   * @param debugWithBackgroundImage Whether to show a background image for debugging purposes. Disables the bloom effect.
+   */
+  constructor(containerEl: HTMLDivElement, outlineColor: THREE.Color, reducedMotion: boolean, debugWithBackgroundImage?: boolean) {
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x101010);
+  
+    this.camera = new THREE.PerspectiveCamera(75, (window.innerWidth / 2) / window.innerHeight, 0.01, 10000);
+  
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setSize(window.innerWidth / 2, window.innerHeight);
+    this.renderer.setClearColor(0x101010, 1);
+    this.renderer.setAnimationLoop(this.animate);
 
-  camera = new THREE.PerspectiveCamera(75, (window.innerWidth / 2) / window.innerHeight, 0.01, 10000);
+    this.canvasContainer = containerEl;
+    this.canvasContainer.appendChild(this.renderer.domElement);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth / 2, window.innerHeight);
+    this.time = new THREE.Clock(true);
 
-  canvasContainer = document.querySelector<HTMLDivElement>('#canvas-container');
-  if (!canvasContainer) return;
+    this.composer = new EffectComposer(this.renderer);
+  
+    // Light 2, the sequel to light, now available
+    const light2 = new THREE.AmbientLight(0x606060);
+    this.scene.add(light2);
 
-  canvasContainer.appendChild(renderer.domElement);
+    const renderScene = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(renderScene);
 
-  // Hidden, for debug purposes
-  // addBackgroundImageTexture();
-  addSphere();
+    this.loadLogoModel();
+    this.addPostProcessing(true, true, outlineColor, debugWithBackgroundImage || false);
 
-  renderer.setClearColor(0x101010);
-  renderer.setAnimationLoop(animate);
+    if (debugWithBackgroundImage) {
+      this.addDebugBackgroundImage();
+    }
 
-  time = new THREE.Clock(true);
+    this.initListeners(reducedMotion);
+    this.registerLoadingCallback();
+  }
 
-  const renderScene = new RenderPass(scene, camera);
+  animate = () => {
+    if (this.model && this.canvasContainer) {
+      // Movement courtesy of Otterlord, easing courtesy of Louis Escher
+      const targetRotationX = this.mouseY === 0 ? Math.PI / 2 : (0.1 * ((this.mouseY / window.innerHeight) * Math.PI - Math.PI / 2)) + Math.PI / 2;
+      const targetRotationY = this.mouseX === 0 ? 0 : 0.1 * ((this.mouseX / (window.innerWidth / 2)) * Math.PI - Math.PI / 2);
 
-  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight), 1.5, 0.4, .85);
-  bloomPass.threshold = 0;
-  bloomPass.strength = 1.5;
-  bloomPass.radius = 0;
+      const lerpFactor = .035;
 
-  composer = new EffectComposer( renderer );
-  composer.addPass( renderScene );
-  composer.addPass( bloomPass );
+      this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, targetRotationX, lerpFactor);
+      this.model.rotation.y = THREE.MathUtils.lerp(this.model.rotation.y, 0, lerpFactor);
+      this.model.rotation.z = THREE.MathUtils.lerp(this.model.rotation.z, -targetRotationY, lerpFactor);
 
-  loadGLTFModel();
-}
+      // this.model.rotation.set(rotationX, 0, -rotationY);
+    }
+  
+    this.composer.render();
+  }
 
-function addSphere() {
-  const sphere = new THREE.SphereGeometry(1);
-  const sphereMaterial = new THREE.MeshStandardMaterial({
-    emissive: new THREE.Color(0xbd0249),
-  });
+  loadLogoModel = () => {
+    const loader = new GLTFLoader();
 
-  sphereMesh = new THREE.Mesh(sphere, sphereMaterial);
+    // Load the GLTF Model from the public dir & apply the material to all children
+    loader.loadAsync('/studiocms-login-test/studiocms-logo.glb').then((gltf) => {
+      this.model = gltf.scene;
 
-  sphereMesh.position.set(0, 0, -1);
-  scene.add(sphereMesh);
-}
+      this.model.traverse((child) => {
+        const isMesh = child instanceof THREE.Mesh;
 
-function addBackgroundImageTexture() {
-  new THREE.TextureLoader().loadAsync("/studiocms-login-test/evening-sky.png").then((texture) => {
-    const bgGeo = new THREE.PlaneGeometry(15, 15);
-    const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
-    const bgMesh = new THREE.Mesh(bgGeo, bgMaterial);
+        if (!isMesh) return;
 
-    bgMesh.position.set(0, 0, -1);
-    scene.add(bgMesh);
-  })
-}
-
-function fitModelToViewport(model: THREE.Group<THREE.Object3DEventMap>) {
-  const box = new THREE.Box3().setFromObject(model);
-  const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-
-  model.position.x += (model.position.x - center.x);
-  model.position.y += (model.position.y - center.y);
-  model.position.z += (model.position.z - center.z);
-
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const fov = camera.fov * (Math.PI / 180);
-  let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-
-  cameraZ *= 2.5;
-  camera.position.z = cameraZ;
-
-  camera.updateProjectionMatrix();
-}
-
-function loadGLTFModel() {
-  const loader = new GLTFLoader();
-  loader.load('/studiocms-login-test/studiocms-logo.glb', (gltf) => {
-    model = gltf.scene;
-
-    model.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        // TODO: Change material to frosted glass here
         const material = new THREE.MeshPhysicalMaterial({
           roughness: .45,
           transmission: .9,
           thickness: .8,
           clearcoat: .5,
           clearcoatRoughness: .5
-          // NOTE: A fresnel shader might be needed to emphasize the corners some more.
         });
+
         child.material = material;
+      });
+
+      this.scene.add(this.model);
+
+      this.model.rotation.set(Math.PI / 2, 0, 0);
+
+      // Fit the model into the camera viewport
+      this.defaultComputedCameraZ = fitModelToViewport(this.model, this.camera);
+
+      // Push to array for outline to be added
+      this.outlinedObjects.push(this.model);
+    });
+  }
+
+  addPostProcessing = (bloom: boolean, outlines: boolean, outlineColor: THREE.Color, debugImage: boolean) => {
+    if (bloom && !debugImage) this.addBloom();
+    if (outlines) this.addOutlines(outlineColor)
+  }
+
+  addOutlines = (outlineColor: THREE.Color) => {
+    const outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight), this.scene, this.camera);
+  
+    outlinePass.selectedObjects = this.outlinedObjects;
+    outlinePass.edgeStrength = 2.0;
+    outlinePass.edgeGlow = 0;
+    outlinePass.edgeThickness = .1;
+    outlinePass.pulsePeriod = 0;
+    outlinePass.visibleEdgeColor.set(outlineColor);
+    outlinePass.hiddenEdgeColor.set(new THREE.Color(0x000000));
+    
+    this.composer.addPass(outlinePass);
+  }
+  
+  addBloom = () => {
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight), 1.5, 0.4, .85);
+    bloomPass.threshold = 0;
+    bloomPass.strength = 1.2;
+    bloomPass.radius = 0;
+  
+    this.composer.addPass(bloomPass);
+  }
+
+  addDebugBackgroundImage = () => {
+    const loader = new THREE.TextureLoader();
+    
+    loader.loadAsync("/studiocms-login-test/evening-sky.png").then((texture) => {
+      const bgGeo = new THREE.PlaneGeometry(15, 15);
+      const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
+      const bgMesh = new THREE.Mesh(bgGeo, bgMaterial);
+  
+      bgMesh.position.set(0, 0, -1);
+      this.scene.add(bgMesh);
+    });
+  }
+
+  initListeners = (reducedMotion: boolean) => {
+    this.initResizeListener();
+
+    if (!reducedMotion) {
+      this.initMouseMoveListener();
+    }
+  }
+
+  initResizeListener = () => {
+    console.log("Initialized.");
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 850) {
+        this.camera.aspect = (window.innerWidth / 2) / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+  
+        this.renderer.setSize(window.innerWidth / 2, window.innerHeight);
+        this.composer.setSize(window.innerWidth / 2, window.innerHeight);
+
+        // Move camera for smaller logo if necessary
+        if (window.innerWidth < 1100 && this.defaultComputedCameraZ) {
+          this.camera.position.set(
+            this.camera.position.x,
+            this.camera.position.y,
+            this.defaultComputedCameraZ + 5
+          );
+        } else if (window.innerWidth >= 1100 && this.defaultComputedCameraZ) {
+          this.camera.position.set(
+            this.camera.position.x,
+            this.camera.position.y,
+            this.defaultComputedCameraZ
+          );
+        }
       }
     });
-
-    // Light 2, the sequel to light, now available (SQLite??????)
-    const light2 = new THREE.AmbientLight( 0x606060 ); // soft white light
-    scene.add( light2 );
-
-    scene.add(model);
-
-    fitModelToViewport(model);
-  }, undefined, (err) => {
-    console.error(err);
-  });
-}
-
-function animate() {
-  if (model && canvasContainer) {
-    const rotationX = (0.1 * ((mouseY / window.innerHeight) * Math.PI - Math.PI / 2)) + Math.PI / 2;
-    const rotationY = 0.1 * ((mouseX / (canvasContainer.clientWidth)) * Math.PI - Math.PI / 2);
-
-    model.rotation.z = -rotationY;
-    model.rotation.x = rotationX;
   }
 
-  if (sphereMesh) {
-    console.log("Why")
-    sphereMesh.position.set(Math.cos(time.getElapsedTime()), sphereMesh.position.y, sphereMesh.position.z)
+  initMouseMoveListener = () => {
+    // Mouse move event listener to capture and update mouse coordinates
+    document.addEventListener('mousemove', (ev) => {
+      this.mouseX = ev.clientX;
+      this.mouseY = ev.clientY;
+    });
   }
 
-  composer.render();
+  registerLoadingCallback = () => {
+    THREE.DefaultLoadingManager.onLoad = () => {
+      this.canvasContainer.classList.add("loaded");
+    }
+  }
 }
 
-// Mouse move event listener to capture and update mouse coordinates
-document.getElementById('canvas-container')!.addEventListener('mousemove', (ev) => {
-  mouseX = ev.clientX;
-  mouseY = ev.clientY;
-});
+// function addSphere() {
+//   const sphere = new THREE.SphereGeometry(1);
+//   const sphereMaterial = new THREE.MeshStandardMaterial({
+//     emissive: new THREE.Color(0x6366f1),
+//   });
 
-init();
+//   sphereMesh = new THREE.Mesh(sphere, sphereMaterial);
+
+//   sphereMesh.position.set(0, 0, -1);
+//   scene.add(sphereMesh);
+// }
+
+const logoContainer = document.querySelector<HTMLDivElement>('#canvas-container')!;
+const usingReducedMotion = window.matchMedia(`(prefers-reduced-motion: reduce)`).matches === true;
+const smallScreen = window.matchMedia(`(max-width: 850px)`).matches === true;
+
+if (!smallScreen) {
+  new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, false);
+}
+
+// TODO:
+// 1. Background anim (Astro Logo?)
+// 2. On screen sizes between 1100px & 850px, make the camera be further away / the logo smaller

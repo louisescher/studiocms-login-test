@@ -1,11 +1,33 @@
 ---
+import TextInput from '@/components/TextInput.astro';
 import Layout from '../layouts/Layout.astro';
+import Button from '@/components/Button.astro';
+import Divider from '@/components/Divider.astro';
+import GitHubButton from '@/components/GitHubButton.astro';
 ---
 
 <Layout title="StudioCMS Login Page Test">
 	<main>
 		<div id="canvas-container" />
-		<div class="login-form-container"></div>
+		<div class="login-form-container">
+			<form class="form">
+				<h1>Log In</h1>
+				<p>Enter your username & password or log in using one of the options below.</p>
+				<TextInput
+					label='Username'
+					placeholder='JohnDoe'
+					type='text'
+				/>
+				<TextInput
+					label='Password'
+					placeholder='Password'
+					type='password'
+				/>
+				<Button type="submit" stretch>Log In</Button>
+				<Divider>or log in using</Divider>
+				<GitHubButton />
+			</form>
+		</div>
 	</main>
 </Layout>
 
@@ -16,15 +38,69 @@ import Layout from '../layouts/Layout.astro';
 		height: 100vh;
 		width: 100vw;
 		overflow: hidden;
+		color: white;
 	}
 
 	#canvas-container, .login-form-container {
 		width: 50%;
 		height: 100%;
+		position: relative;
+	}
+
+	#canvas-container {
+		opacity: 0;
+		transition: all .15s ease;
+	}
+
+	#canvas-container.loaded {
+		opacity: 1;
 	}
 
 	.login-form-container {
 		border-left: 1px solid #27272a;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.form {
+		width: 50%;
+		display: flex;
+		flex-direction: column;
+		gap: .5rem;
+	}
+
+	@media screen and (max-width: 1100px) {
+		.form {
+			width: 75%;
+		}
+	}
+
+	@media screen and (max-width: 850px) {
+		.form {
+			width: 50%;
+		}
+
+		#canvas-container {
+			display: none;
+		}
+
+		.login-form-container {
+			width: 100%;
+			border: none;
+		}
+	}
+
+	.form h1, .form p {
+		text-align: center;
+	}
+
+	.form h1 {
+		margin: 0;
+	}
+
+	.form p {
+    color: #8A8A8A;
 	}
 
 	#canvas {
