@@ -168,7 +168,6 @@ class StudioCMS3DLogo {
   }
 
   initResizeListener = () => {
-    console.log("Initialized.");
     window.addEventListener('resize', () => {
       if (window.innerWidth > 850) {
         this.camera.aspect = (window.innerWidth / 2) / window.innerHeight;
