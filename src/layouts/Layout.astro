@@ -11,6 +11,11 @@ const { title } = Astro.props;
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="description" content="A page testing how the login form for the redesigned StudioCMS dashboard could look." />
+
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content="A page testing how the login form for the redesigned StudioCMS dashboard could look." />
+		<meta property="og:image" content="/studiocms-login-test/og.png" />
+
 		<meta name="viewport" content="width=device-width" />
 		<link rel="icon" type="image/svg+xml" href="/studiocms-login-test/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
