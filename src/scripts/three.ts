@@ -4,7 +4,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
-import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { fitModelToViewport } from '@/utils/fitModelToViewport';
 
 import { Pane } from 'tweakpane';
@@ -108,7 +107,7 @@ class StudioCMS3DLogo {
     this.composer.addPass(renderScene);
 
     this.loadLogoModel();
-    this.addPostProcessing(true, true, outlineColor);
+    this.addPostProcessing(true, outlineColor);
 
     this.addBackgroundImage(image || validImages[0]);
     this.initTweakpane();
@@ -162,9 +161,8 @@ class StudioCMS3DLogo {
     });
   }
 
-  addPostProcessing = (outlines: boolean, smaa: boolean, outlineColor: THREE.Color) => {
+  addPostProcessing = (outlines: boolean, outlineColor: THREE.Color) => {
     if (outlines) this.addOutlines(outlineColor);
-    if (smaa) this.addSMAA();
   }
 
   addOutlines = (outlineColor: THREE.Color) => {
@@ -179,12 +177,6 @@ class StudioCMS3DLogo {
     this.outlinePass.hiddenEdgeColor.set(new THREE.Color(0xffffff));
     
     this.composer.addPass(this.outlinePass);
-  }
-
-  addSMAA = () => {
-    const smaaPass = new SMAAPass(window.innerWidth / 2, window.innerHeight);
-    smaaPass.renderToScreen = true;
-    this.composer.addPass(smaaPass);
   }
 
   addBackgroundImage = (image: ValidImage) => {
