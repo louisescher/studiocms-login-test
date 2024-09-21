@@ -86,7 +86,7 @@ class StudioCMS3DLogo {
   
     this.camera = new THREE.PerspectiveCamera(75, (window.innerWidth / 2) / window.innerHeight, 0.01, 10000);
   
-    this.renderer = new THREE.WebGLRenderer({ antialias: false });
+    this.renderer = new THREE.WebGLRenderer({ antialias: false, failIfMajorPerformanceCaveat: true });
     this.renderer.setSize(window.innerWidth / 2, window.innerHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio * 2);
     this.renderer.setClearColor(0x101010, 1);
@@ -406,8 +406,9 @@ const usingReducedMotion = window.matchMedia(`(prefers-reduced-motion: reduce)`)
 const smallScreen = window.matchMedia(`(max-width: 850px)`).matches === true;
 
 if (!smallScreen) {
-  new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, validImages[0]);
+  try {
+    new StudioCMS3DLogo(logoContainer, new THREE.Color(0xaa87f4), usingReducedMotion, validImages[0]);
+  } catch(err) {
+    // TODO: Show static image instead (configured background plus non-transparent logo in the same position, allow for custom bgs)
+  }
 }
-
-// TODO:
-// 1. Background anim (Astro Logo?)
